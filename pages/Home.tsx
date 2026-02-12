@@ -1,13 +1,13 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../AppContext';
-import { UserCircle, Zap, MapPin, Clock, X, CheckCircle2, Users, Check } from 'lucide-react';
+import { UserCircle, Zap, MapPin, Clock, X, CheckCircle2, Users, Check, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { DayOfWeek } from '../types';
+import { DayOfWeek, ClassSchedule } from '../types';
 
 const HomePage: React.FC = () => {
   const { user, checkIn, getInitials } = useApp();
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [activeCheckInClass, setActiveCheckInClass] = useState<ClassSchedule | null>(null);
   const [selectedBuddies, setSelectedBuddies] = useState<string[]>([]);
 
   if (!user) return null;
@@ -17,18 +17,12 @@ const HomePage: React.FC = () => {
   
   const schedule = Array.isArray(user.schedule) ? user.schedule : [];
   const classesToday = schedule.filter(c => c.days.includes(todayName));
-  const nextClass = classesToday[0];
 
   const progress = (user.dailyPoints / user.dailyGoal) * 100;
   const radius = 100;
   const strokeWidth = 14;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (Math.min(progress, 100) / 100) * circumference;
-
-  // Filter buddies who share this specific class
-  const eligibleBuddies = user.buddies.filter(buddy => 
-    nextClass && buddy.sharedClasses.includes(nextClass.className)
-  );
 
   const toggleBuddy = (id: string) => {
     setSelectedBuddies(prev => 
@@ -37,15 +31,17 @@ const HomePage: React.FC = () => {
   };
 
   const handleCheckIn = async () => {
-    if (nextClass) {
-      await checkIn(nextClass.className, selectedBuddies.length);
-      setShowCheckInModal(false);
+    if (activeCheckInClass) {
+      await checkIn(activeCheckInClass.className, selectedBuddies.length);
+      setActiveCheckInClass(null);
       setSelectedBuddies([]);
     }
   };
 
-  // Check if already checked in for the specific class today
-  const isAlreadyCheckedIn = nextClass && user.lastCheckInDates[nextClass.className] === todayStr;
+  // Filter buddies who share the currently active check-in class
+  const eligibleBuddies = user.buddies.filter(buddy => 
+    activeCheckInClass && buddy.sharedClasses.includes(activeCheckInClass.className)
+  );
 
   const buddyBonus = selectedBuddies.length * 10;
   const totalCheckInPoints = 50 + buddyBonus;
@@ -81,51 +77,66 @@ const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {nextClass ? (
-        <div className={`bg-white rounded-[40px] p-8 shadow-sm border border-slate-50 relative overflow-hidden transition-all ${isAlreadyCheckedIn ? 'opacity-80 scale-[0.98]' : ''}`}>
-          {isAlreadyCheckedIn && (
-            <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2 bg-white/80 px-6 py-4 rounded-3xl shadow-sm">
-                <CheckCircle2 size={40} className="text-[#e67e5f]" />
-                <span className="font-black text-[#1a4a5e] uppercase tracking-widest text-[10px]">Sync Complete</span>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <span className="text-[#e67e5f] text-[10px] font-black uppercase tracking-[0.2em]">Next Class Today</span>
-              <h2 className="text-2xl font-black text-[#1a4a5e] mt-1">{nextClass.className}</h2>
-            </div>
-            <div className="bg-slate-50 px-3 py-1.5 rounded-full text-[10px] font-black text-[#e67e5f]">+50 pts</div>
-          </div>
-          <div className="flex gap-4 text-slate-400 font-bold text-sm mb-8">
-            <div className="flex items-center gap-1.5"><Clock size={16} /><span>{nextClass.startTime}</span></div>
-            <div className="flex items-center gap-1.5"><MapPin size={16} /><span>{nextClass.location || 'University Campus'}</span></div>
-          </div>
-          <button 
-            onClick={() => !isAlreadyCheckedIn && setShowCheckInModal(true)} 
-            disabled={isAlreadyCheckedIn}
-            className={`w-full font-black py-5 rounded-[24px] shadow-xl transition-all active:scale-95 ${isAlreadyCheckedIn ? 'bg-slate-100 text-slate-300 shadow-none cursor-not-allowed' : 'bg-[#1a4a5e] text-white shadow-[#1a4a5e]/20 hover:bg-[#255b70]'}`}
-          >
-            {isAlreadyCheckedIn ? 'Attendance Logged' : 'Check In Now'}
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-50 text-center">
-          <p className="text-slate-400 font-bold">No classes scheduled for today.</p>
-          <Link to="/classes" className="text-[#e67e5f] font-black uppercase text-xs tracking-widest mt-4 inline-block">Edit Schedule</Link>
-        </div>
-      )}
+      <div className="flex items-center gap-2 mb-6">
+        <Calendar size={18} className="text-[#1a4a5e]" />
+        <h3 className="text-lg font-black text-[#1a4a5e]">Today's Schedule</h3>
+      </div>
 
-      {showCheckInModal && (
+      <div className="space-y-6 mb-12">
+        {classesToday.length > 0 ? (
+          classesToday.map((cls) => {
+            const isAlreadyCheckedIn = user.lastCheckInDates[cls.className] === todayStr;
+            return (
+              <div 
+                key={cls.className} 
+                className={`bg-white rounded-[40px] p-8 shadow-sm border border-slate-50 relative overflow-hidden transition-all ${isAlreadyCheckedIn ? 'opacity-80 scale-[0.98]' : ''}`}
+              >
+                {isAlreadyCheckedIn && (
+                  <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-2 bg-white/80 px-6 py-4 rounded-3xl shadow-sm">
+                      <CheckCircle2 size={40} className="text-[#e67e5f]" />
+                      <span className="font-black text-[#1a4a5e] uppercase tracking-widest text-[10px]">Sync Complete</span>
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <span className="text-[#e67e5f] text-[10px] font-black uppercase tracking-[0.2em]">Class Scheduled</span>
+                    <h2 className="text-2xl font-black text-[#1a4a5e] mt-1">{cls.className}</h2>
+                  </div>
+                  <div className="bg-slate-50 px-3 py-1.5 rounded-full text-[10px] font-black text-[#e67e5f]">+50 pts</div>
+                </div>
+                <div className="flex gap-4 text-slate-400 font-bold text-sm mb-8">
+                  <div className="flex items-center gap-1.5"><Clock size={16} /><span>{cls.startTime}</span></div>
+                  <div className="flex items-center gap-1.5"><MapPin size={16} /><span>{cls.location || 'University Campus'}</span></div>
+                </div>
+                <button 
+                  onClick={() => !isAlreadyCheckedIn && setActiveCheckInClass(cls)} 
+                  disabled={isAlreadyCheckedIn}
+                  className={`w-full font-black py-5 rounded-[24px] shadow-xl transition-all active:scale-95 ${isAlreadyCheckedIn ? 'bg-slate-100 text-slate-300 shadow-none cursor-not-allowed' : 'bg-[#1a4a5e] text-white shadow-[#1a4a5e]/20 hover:bg-[#255b70]'}`}
+                >
+                  {isAlreadyCheckedIn ? 'Attendance Logged' : 'Check In Now'}
+                </button>
+              </div>
+            );
+          })
+        ) : (
+          <div className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-50 text-center">
+            <p className="text-slate-400 font-bold">No classes scheduled for today.</p>
+            <Link to="/classes" className="text-[#e67e5f] font-black uppercase text-xs tracking-widest mt-4 inline-block">Edit Schedule</Link>
+          </div>
+        )}
+      </div>
+
+      {activeCheckInClass && (
         <div className="fixed inset-0 bg-[#1a4a5e]/40 backdrop-blur-md z-[100] flex items-end justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-[48px] overflow-hidden shadow-2xl p-10 animate-in slide-in-from-bottom duration-300 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-3xl font-black text-[#1a4a5e]">{nextClass?.className}</h2>
-                <p className="text-slate-400 font-bold text-sm mt-1">{nextClass?.location || 'Main Campus'}</p>
+                <h2 className="text-3xl font-black text-[#1a4a5e]">{activeCheckInClass.className}</h2>
+                <p className="text-slate-400 font-bold text-sm mt-1">{activeCheckInClass.location || 'Main Campus'}</p>
               </div>
-              <button onClick={() => { setShowCheckInModal(false); setSelectedBuddies([]); }} className="bg-slate-50 p-2 rounded-2xl text-slate-400"><X size={24} /></button>
+              <button onClick={() => { setActiveCheckInClass(null); setSelectedBuddies([]); }} className="bg-slate-50 p-2 rounded-2xl text-slate-400"><X size={24} /></button>
             </div>
 
             {eligibleBuddies.length > 0 && (
