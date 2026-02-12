@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Sync Code_new",
+  "description": "A productivity and attendance app for students to sync their classes, track study time, and earn rewards through consistency.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
