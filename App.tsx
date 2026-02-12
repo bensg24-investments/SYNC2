@@ -12,23 +12,22 @@ import SettingsPage from './pages/Settings';
 import AuthPage from './pages/Auth';
 import { useApp } from './AppContext';
 
-const Logo: React.FC<{ size?: number; animated?: boolean }> = ({ size = 80, animated = false }) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={animated ? 'animate-pulse' : ''}>
-    <defs>
-      <linearGradient id="logoGradientApp" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#3a5866" />
-        <stop offset="100%" stopColor="#e67e5f" />
-      </linearGradient>
-    </defs>
-    <path d="M25 35 A 32 32 0 1 1 75 35" stroke="url(#logoGradientApp)" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.8" />
-    <path d="M75 65 A 32 32 0 1 1 25 65" stroke="url(#logoGradientApp)" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.8" />
-    <path d="M70 30 L 75 35 L 70 40" stroke="url(#logoGradientApp)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    <path d="M30 70 L 25 65 L 30 60" stroke="url(#logoGradientApp)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    <path d="M35 55 H 75" stroke="url(#logoGradientApp)" strokeWidth="6" strokeLinecap="round" />
-    <path d="M42 55 V 46" stroke="url(#logoGradientApp)" strokeWidth="6" strokeLinecap="round" />
-    <path d="M42 46 H 47" stroke="url(#logoGradientApp)" strokeWidth="6" strokeLinecap="round" />
-    <path d="M55 55 V 38 C 55 32 63 32 63 38 V 46" stroke="url(#logoGradientApp)" strokeWidth="6" strokeLinecap="round" fill="none" />
-  </svg>
+const Logo: React.FC<{ size?: number; animated?: boolean; withBackground?: boolean }> = ({ size = 80, animated = false, withBackground = false }) => (
+  <div className={`relative flex items-center justify-center ${withBackground ? 'rounded-[32px] overflow-hidden p-2 bg-gradient-to-br from-[#3a5866] via-[#5b7a8a] to-[#e67e5f] shadow-2xl' : ''}`} style={{ width: size, height: size }}>
+    <svg width="85%" height="85%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={animated ? 'animate-pulse' : ''}>
+      {/* Sync Arrows */}
+      <path d="M25 45 A 25 25 0 0 1 75 45" stroke="white" strokeWidth="5" strokeLinecap="round" fill="none" />
+      <path d="M75 55 A 25 25 0 0 1 25 55" stroke="white" strokeWidth="5" strokeLinecap="round" fill="none" />
+      {/* Arrow Heads */}
+      <path d="M72 40 L 75 45 L 70 47" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M28 60 L 25 55 L 30 53" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      
+      {/* Sink/Tap Icon */}
+      <path d="M35 55 H 70" stroke="white" strokeWidth="6" strokeLinecap="round" />
+      <path d="M42 55 V 48 H 47" stroke="white" strokeWidth="6" strokeLinecap="round" />
+      <path d="M55 55 V 42 C 55 36 65 36 65 42 V 48" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
+    </svg>
+  </div>
 );
 
 const Navigation: React.FC = () => {
@@ -71,8 +70,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (loading) {
     return (
       <div className="max-w-md mx-auto min-h-screen bg-[#f8f9fa] flex flex-col items-center justify-center p-8 text-center">
-        <Logo size={100} animated />
-        <p className="text-[#1a4a5e] font-bold text-lg mt-4 animate-pulse">Syncing...</p>
+        <Logo size={120} animated withBackground />
+        <p className="text-[#1a4a5e] font-bold text-lg mt-8 animate-pulse">Syncing...</p>
       </div>
     );
   }
@@ -103,6 +102,7 @@ const App: React.FC = () => {
           <Route path="/scan" element={<ScanPage />} />
           <Route path="/redeem" element={<RedeemPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          {/* Ensure all unauthorized or unknown routes land on home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>

@@ -12,6 +12,7 @@ const HomePage: React.FC = () => {
 
   if (!user) return null;
 
+  const todayStr = new Date().toDateString();
   const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()] as DayOfWeek;
   
   const schedule = Array.isArray(user.schedule) ? user.schedule : [];
@@ -42,6 +43,9 @@ const HomePage: React.FC = () => {
       setSelectedBuddies([]);
     }
   };
+
+  // Check if already checked in for the specific class today
+  const isAlreadyCheckedIn = nextClass && user.lastCheckInDates[nextClass.className] === todayStr;
 
   const buddyBonus = selectedBuddies.length * 10;
   const totalCheckInPoints = 50 + buddyBonus;
@@ -78,7 +82,15 @@ const HomePage: React.FC = () => {
       </div>
 
       {nextClass ? (
-        <div className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-50">
+        <div className={`bg-white rounded-[40px] p-8 shadow-sm border border-slate-50 relative overflow-hidden transition-all ${isAlreadyCheckedIn ? 'opacity-80 scale-[0.98]' : ''}`}>
+          {isAlreadyCheckedIn && (
+            <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2 bg-white/80 px-6 py-4 rounded-3xl shadow-sm">
+                <CheckCircle2 size={40} className="text-[#e67e5f]" />
+                <span className="font-black text-[#1a4a5e] uppercase tracking-widest text-[10px]">Sync Complete</span>
+              </div>
+            </div>
+          )}
           <div className="flex justify-between items-start mb-4">
             <div>
               <span className="text-[#e67e5f] text-[10px] font-black uppercase tracking-[0.2em]">Next Class Today</span>
@@ -90,7 +102,13 @@ const HomePage: React.FC = () => {
             <div className="flex items-center gap-1.5"><Clock size={16} /><span>{nextClass.startTime}</span></div>
             <div className="flex items-center gap-1.5"><MapPin size={16} /><span>{nextClass.location || 'University Campus'}</span></div>
           </div>
-          <button onClick={() => setShowCheckInModal(true)} className="w-full bg-[#1a4a5e] text-white font-black py-5 rounded-[24px] shadow-xl shadow-[#1a4a5e]/20 active:scale-95 transition-transform">Check In Now</button>
+          <button 
+            onClick={() => !isAlreadyCheckedIn && setShowCheckInModal(true)} 
+            disabled={isAlreadyCheckedIn}
+            className={`w-full font-black py-5 rounded-[24px] shadow-xl transition-all active:scale-95 ${isAlreadyCheckedIn ? 'bg-slate-100 text-slate-300 shadow-none cursor-not-allowed' : 'bg-[#1a4a5e] text-white shadow-[#1a4a5e]/20 hover:bg-[#255b70]'}`}
+          >
+            {isAlreadyCheckedIn ? 'Attendance Logged' : 'Check In Now'}
+          </button>
         </div>
       ) : (
         <div className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-50 text-center">

@@ -4,27 +4,26 @@ import { useApp } from '../AppContext';
 import { User, Mail, Lock, Eye, EyeOff, Loader2, AtSign } from 'lucide-react';
 
 const Logo: React.FC<{ size?: number }> = ({ size = 120 }) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#3a5866" />
-        <stop offset="100%" stopColor="#e67e5f" />
-      </linearGradient>
-    </defs>
-    <path d="M25 35 A 32 32 0 1 1 75 35" stroke="url(#logoGradient)" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.8" />
-    <path d="M75 65 A 32 32 0 1 1 25 65" stroke="url(#logoGradient)" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.8" />
-    <path d="M70 30 L 75 35 L 70 40" stroke="url(#logoGradient)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    <path d="M30 70 L 25 65 L 30 60" stroke="url(#logoGradient)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    <path d="M35 55 H 75" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" />
-    <path d="M42 55 V 46" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" />
-    <path d="M42 46 H 47" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" />
-    <path d="M55 55 V 38 C 55 32 63 32 63 38 V 46" stroke="url(#logoGradient)" strokeWidth="6" strokeLinecap="round" fill="none" />
-  </svg>
+  <div className="relative flex items-center justify-center rounded-[40px] overflow-hidden p-2 bg-gradient-to-br from-[#3a5866] via-[#5b7a8a] to-[#e67e5f] shadow-2xl" style={{ width: size, height: size }}>
+    <svg width="85%" height="85%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Sync Arrows */}
+      <path d="M25 45 A 25 25 0 0 1 75 45" stroke="white" strokeWidth="5" strokeLinecap="round" fill="none" />
+      <path d="M75 55 A 25 25 0 0 1 25 55" stroke="white" strokeWidth="5" strokeLinecap="round" fill="none" />
+      {/* Arrow Heads */}
+      <path d="M72 40 L 75 45 L 70 47" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M28 60 L 25 55 L 30 53" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      
+      {/* Sink/Tap Icon */}
+      <path d="M35 55 H 70" stroke="white" strokeWidth="6" strokeLinecap="round" />
+      <path d="M42 55 V 48 H 47" stroke="white" strokeWidth="6" strokeLinecap="round" />
+      <path d="M55 55 V 42 C 55 36 65 36 65 42 V 48" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
+    </svg>
+  </div>
 );
 
 const AuthPage: React.FC = () => {
   const { login, signup, loginWithGoogle } = useApp();
-  const [isLogin, setIsLogin] = useState(false); 
+  const [isLogin, setIsLogin] = useState(true); // Default to login as requested (user said opens to profile, ensuring landing page focus)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -69,15 +68,15 @@ const AuthPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col items-center justify-center p-6 pb-12 font-sans">
-      <div className="flex flex-col items-center mb-10">
-        <div className="mb-4">
+      <div className="flex flex-col items-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div className="mb-6">
           <Logo size={120} />
         </div>
         <h1 className="text-[48px] font-black tracking-tight leading-none mb-2 text-[#3a5866]">Sync</h1>
-        <p className="text-[#1a1a1a] font-bold text-lg tracking-tight text-center">Credit where credit is due</p>
+        <p className="text-[#1a1a1a] font-bold text-lg tracking-tight text-center opacity-80">Credit where credit is due</p>
       </div>
 
-      <div className="w-full max-w-[400px] bg-white rounded-[40px] p-8 shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)]">
+      <div className="w-full max-w-[400px] bg-white rounded-[40px] p-8 shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)] animate-in fade-in zoom-in-95 duration-500">
         <div className="bg-[#f1f3f5] p-1.5 rounded-[20px] flex gap-1 mb-8">
           <button onClick={() => setIsLogin(true)} className={`flex-1 py-3.5 rounded-[16px] font-bold text-sm transition-all ${isLogin ? 'bg-white shadow-sm text-[#1a4a5e]' : 'text-[#868e96]'}`}>Log In</button>
           <button onClick={() => setIsLogin(false)} className={`flex-1 py-3.5 rounded-[16px] font-bold text-sm transition-all ${!isLogin ? 'bg-white shadow-sm text-[#1a4a5e]' : 'text-[#868e96]'}`}>Sign Up</button>
@@ -122,7 +121,7 @@ const AuthPage: React.FC = () => {
 
           {error && <div className="text-center text-red-500 font-bold text-xs mt-2">{error}</div>}
 
-          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#1a4a5e] to-[#e67e5f] text-white font-bold py-5 rounded-[24px] shadow-xl transition-all flex items-center justify-center gap-2">
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#1a4a5e] to-[#e67e5f] text-white font-bold py-5 rounded-[24px] shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95">
             {loading ? <Loader2 size={20} className="animate-spin" /> : (isLogin ? 'Log In' : 'Sign Up')}
           </button>
         </form>
@@ -132,7 +131,7 @@ const AuthPage: React.FC = () => {
           <div className="relative flex justify-center"><span className="bg-white px-4 text-sm font-semibold text-[#adb5bd]">Or continue with</span></div>
         </div>
 
-        <button onClick={handleGoogle} className="w-full bg-white border border-[#dee2e6] text-[#495057] font-bold py-4 rounded-[20px] flex items-center justify-center gap-3 transition-all">
+        <button onClick={handleGoogle} className="w-full bg-white border border-[#dee2e6] text-[#495057] font-bold py-4 rounded-[20px] flex items-center justify-center gap-3 transition-all active:scale-95">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
           <span>Google</span>
         </button>
