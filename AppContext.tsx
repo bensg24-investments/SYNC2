@@ -19,10 +19,13 @@ import {
   collection, 
   getDocs, 
   deleteDoc, 
-  writeBatch
+  writeBatch,
+  query,
+  where,
+  limit
 } from 'firebase/firestore';
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+const AppContext = createContext<any>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserState | null>(null);
@@ -40,7 +43,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...doc.data()
         })) as Buddy[];
 
-        // Defensively ensure all array properties are initialized
         const baseData: UserState = {
           uid: data.uid || uid,
           name: data.name || 'User',
@@ -110,55 +112,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const signup = async (email: string, password: string, name: string, username: string) => {
     const usernameLower = username.toLowerCase();
-    
-    // 1. Pre-check username availability (Fast fail)
     const usernameDoc = await getDoc(doc(db, 'usernames', usernameLower));
-    if (usernameDoc.exists()) {
-      throw { code: 'auth/username-already-in-use' };
-    }
+    if (usernameDoc.exists()) throw { code: 'auth/username-already-in-use' };
 
-    // 2. Perform Auth (Outside transaction to avoid "Unexpected state" error)
     const res = await createUserWithEmailAndPassword(auth, email, password);
     const uid = res.user.uid;
-
     try {
-      // 3. Setup Firestore Profile
       const batch = writeBatch(db);
-      
       const newUser: UserState = {
-        uid,
-        name,
-        username: usernameLower,
-        email,
-        totalPoints: 0,
-        dailyPoints: 0,
-        streak: 1,
-        dailyGoal: 250,
-        lastActiveDate: new Date().toISOString(),
-        lastCheckInDates: {},
-        schedule: [],
-        totalSessions: 0,
-        syncHistory: [],
-        redemptionHistory: [],
-        studyLog: [],
-        dailyStudyPoints: 0,
-        buddies: []
+        uid, name, username: usernameLower, email,
+        totalPoints: 0, dailyPoints: 0, streak: 1, dailyGoal: 250,
+        lastActiveDate: new Date().toISOString(), lastCheckInDates: {},
+        schedule: [], totalSessions: 0, syncHistory: [],
+        redemptionHistory: [], studyLog: [], dailyStudyPoints: 0, buddies: []
       };
-
       batch.set(doc(db, 'users', uid), newUser);
       batch.set(doc(db, 'usernames', usernameLower), { uid });
-      
       await batch.commit();
       await updateProfile(res.user, { displayName: name });
-      
-      // User state will be set by the onAuthStateChanged listener
     } catch (err) {
-      // If profile creation fails, we attempt to clean up the Auth user to allow retry
-      try {
-        await deleteUser(res.user);
-      } catch (cleanupErr) {
-        console.error("Failed to clean up user after profile creation error", cleanupErr);
-      }
+      try { await deleteUser(res.user); } catch (e) {}
       throw err;
     }
   };
@@ -171,29 +144,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const res = await signInWithPopup(auth, googleProvider);
     const uid = res.user.uid;
     const existing = await getDoc(doc(db, 'users', uid));
-    
     if (!existing.exists()) {
       const baseUsername = res.user.email?.split('@')[0] || `user_${uid.substring(0, 5)}`;
-      const name = res.user.displayName || 'Sync User';
-      
       const newUser: UserState = {
-        uid,
-        name,
-        username: baseUsername.toLowerCase(),
-        email: res.user.email || '',
-        totalPoints: 0,
-        dailyPoints: 0,
-        streak: 1,
-        dailyGoal: 250,
-        lastActiveDate: new Date().toISOString(),
-        lastCheckInDates: {},
-        schedule: [],
-        totalSessions: 0,
-        syncHistory: [],
-        redemptionHistory: [],
-        studyLog: [],
-        dailyStudyPoints: 0,
-        buddies: []
+        uid, name: res.user.displayName || 'User', username: baseUsername.toLowerCase(),
+        email: res.user.email || '', totalPoints: 0, dailyPoints: 0, streak: 1, dailyGoal: 250,
+        lastActiveDate: new Date().toISOString(), lastCheckInDates: {},
+        schedule: [], totalSessions: 0, syncHistory: [],
+        redemptionHistory: [], studyLog: [], dailyStudyPoints: 0, buddies: []
       };
       await setDoc(doc(db, 'users', uid), newUser);
       await setDoc(doc(db, 'usernames', baseUsername.toLowerCase()), { uid });
@@ -201,15 +159,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const logout = async () => {
-    await signOut(auth);
-  };
+  const logout = () => signOut(auth);
 
   const checkIn = async (className: string, buddyCount: number = 0) => {
     if (!user) return;
     const today = new Date().toDateString();
     if (user.lastCheckInDates[className] === today) return;
-
     const pointsEarned = 50 + (buddyCount * 10);
     const updated = {
       dailyPoints: user.dailyPoints + pointsEarned,
@@ -225,7 +180,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const basePoints = Math.floor(minutes / 30) * 10;
     const buddyBonus = selectedBuddyIds.length * 10; 
     const totalEarned = basePoints + buddyBonus;
-    
     const newSession: StudySession = {
       id: Math.random().toString(36).substr(2, 9),
       date: new Date().toISOString(),
@@ -233,7 +187,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       pointsEarned: totalEarned,
       buddiesInvolved: selectedBuddyIds
     };
-
     const updated = {
       dailyPoints: user.dailyPoints + totalEarned,
       totalPoints: user.totalPoints + totalEarned,
@@ -245,64 +198,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(prev => prev ? ({ ...prev, ...updated }) : null);
   };
 
-  const updateDailyGoal = async (goal: number) => {
-    if (!user) return;
-    await updateDoc(doc(db, 'users', user.uid), { dailyGoal: goal });
-    setUser(prev => prev ? ({ ...prev, dailyGoal: goal }) : null);
-  };
-
-  const addClass = async (newClass: ClassSchedule) => {
-    if (!user) return;
-    const updatedSchedule = [...(Array.isArray(user.schedule) ? user.schedule : []), newClass];
-    await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
-    setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
-  };
-
-  const removeClass = async (className: string) => {
-    if (!user) return;
-    const updatedSchedule = (Array.isArray(user.schedule) ? user.schedule : []).filter(c => c.className !== className);
-    await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
-    setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
-  };
-
-  const editClass = async (oldClassName: string, updatedClass: ClassSchedule) => {
-    if (!user) return;
-    const updatedSchedule = (Array.isArray(user.schedule) ? user.schedule : []).map(c => c.className === oldClassName ? updatedClass : c);
-    await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
-    setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
-  };
-
-  const updateSettings = async (email: string, name: string) => {
-    if (!user) return;
-    await updateDoc(doc(db, 'users', user.uid), { email, name });
-    setUser(prev => prev ? ({ ...prev, email, name }) : null);
-  };
-
-  const deleteAccount = async () => {
-    if (!user) return;
-    const uid = user.uid;
-    const username = user.username;
-    await deleteDoc(doc(db, 'users', uid));
-    if (username) {
-      await deleteDoc(doc(db, 'usernames', username.toLowerCase()));
-    }
-    await auth.currentUser?.delete();
-    setUser(null);
-  };
-
-  const performGroupSync = async (targetUid: string) => {
-    if (!user || targetUid === user.uid) return;
+  const performGroupSync = async (targetUid: string, sharedClasses: string[]) => {
+    if (!user || targetUid === user.uid) throw new Error("Cannot sync with yourself");
+    if (user.buddies.some(b => b.id === targetUid)) throw new Error("Buddy already added");
     
     const buddyDoc = await getDoc(doc(db, 'users', targetUid));
-    if (!buddyDoc.exists()) return;
-
+    if (!buddyDoc.exists()) throw new Error("Buddy not found");
     const buddyData = buddyDoc.data();
-    const buddySchedule = Array.isArray(buddyData.schedule) ? buddyData.schedule : [];
-    const mySchedule = Array.isArray(user.schedule) ? user.schedule : [];
-
-    const sharedClasses = mySchedule
-      .filter(c => buddySchedule.some((bc: any) => bc.className === c.className))
-      .map(c => c.className);
 
     const buddyEntry: Buddy = {
       id: targetUid,
@@ -323,44 +225,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = {
       totalPoints: user.totalPoints + 50,
       dailyPoints: user.dailyPoints + 50,
-      syncHistory: [newHistory, ...(Array.isArray(user.syncHistory) ? user.syncHistory : [])].slice(0, 5),
-      buddies: [buddyEntry, ...(Array.isArray(user.buddies) ? user.buddies : [])]
+      syncHistory: [newHistory, ...user.syncHistory].slice(0, 5),
+      buddies: [buddyEntry, ...user.buddies]
     };
     await updateDoc(doc(db, 'users', user.uid), updated);
     setUser(prev => prev ? ({ ...prev, ...updated }) : null);
+  };
+
+  const findBuddy = async (identifier: string) => {
+    // Try UID first
+    let userDoc = await getDoc(doc(db, 'users', identifier));
+    if (!userDoc.exists()) {
+      // Try Username
+      const usernameDoc = await getDoc(doc(db, 'usernames', identifier.toLowerCase()));
+      if (usernameDoc.exists()) {
+        const uid = usernameDoc.data().uid;
+        userDoc = await getDoc(doc(db, 'users', uid));
+      }
+    }
+    return userDoc.exists() ? { uid: userDoc.id, ...userDoc.data() } : null;
+  };
+
+  const updateDailyGoal = async (goal: number) => {
+    if (!user) return;
+    await updateDoc(doc(db, 'users', user.uid), { dailyGoal: goal });
+    setUser(prev => prev ? ({ ...prev, dailyGoal: goal }) : null);
+  };
+
+  const addClass = async (newClass: ClassSchedule) => {
+    if (!user) return;
+    const updatedSchedule = [...user.schedule, newClass];
+    await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
+    setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
+  };
+
+  const removeClass = async (className: string) => {
+    if (!user) return;
+    const updatedSchedule = user.schedule.filter(c => c.className !== className);
+    await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
+    setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
+  };
+
+  const editClass = async (oldClassName: string, updatedClass: ClassSchedule) => {
+    if (!user) return;
+    const updatedSchedule = user.schedule.map(c => c.className === oldClassName ? updatedClass : c);
+    await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
+    setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
+  };
+
+  const updateSettings = async (email: string, name: string) => {
+    if (!user) return;
+    await updateDoc(doc(db, 'users', user.uid), { email, name });
+    setUser(prev => prev ? ({ ...prev, email, name }) : null);
+  };
+
+  const deleteAccount = async () => {
+    if (!user) return;
+    await deleteDoc(doc(db, 'users', user.uid));
+    if (user.username) await deleteDoc(doc(db, 'usernames', user.username.toLowerCase()));
+    await auth.currentUser?.delete();
+    setUser(null);
   };
 
   const redeemReward = async (rewardName: string, cost: number): Promise<boolean> => {
     if (!user || user.totalPoints < cost) return false;
     const newRedemption: RedemptionHistoryEntry = {
       id: Math.random().toString(36).substr(2, 9),
-      rewardName,
-      cost,
-      timestamp: new Date().toISOString()
+      rewardName, cost, timestamp: new Date().toISOString()
     };
     const updated = {
       totalPoints: user.totalPoints - cost,
-      redemptionHistory: [newRedemption, ...(Array.isArray(user.redemptionHistory) ? user.redemptionHistory : [])]
+      redemptionHistory: [newRedemption, ...user.redemptionHistory]
     };
     await updateDoc(doc(db, 'users', user.uid), updated);
     setUser(prev => prev ? ({ ...prev, ...updated }) : null);
     return true;
   };
 
-  const getInitials = () => {
-    if (!user || !user.name) return "??";
-    const parts = user.name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-    }
-    return user.name.trim().substring(0, 2).toUpperCase();
+  const getInitials = (name?: string) => {
+    const n = name || user?.name || "??";
+    const parts = n.trim().split(/\s+/);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    return n.trim().substring(0, 2).toUpperCase();
   };
 
   return (
     <AppContext.Provider value={{ 
       user, loading, checkIn, updateDailyGoal, addClass, removeClass, editClass, 
       getInitials, updateSettings, deleteAccount, performGroupSync, logStudySession,
-      redeemReward, signup, login, loginWithGoogle, logout
+      redeemReward, signup, login, loginWithGoogle, logout, findBuddy
     }}>
       {children}
     </AppContext.Provider>
