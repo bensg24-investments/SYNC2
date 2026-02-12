@@ -8,7 +8,8 @@ import {
   signInWithEmailAndPassword, 
   signInWithPopup, 
   signOut,
-  updateProfile
+  updateProfile,
+  deleteUser
 } from 'firebase/auth';
 import { 
   doc, 
@@ -18,7 +19,7 @@ import {
   collection, 
   getDocs, 
   deleteDoc, 
-  runTransaction
+  writeBatch
 } from 'firebase/firestore';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -28,45 +29,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (uid: string) => {
-    const userDoc = await getDoc(doc(db, 'users', uid));
-    if (userDoc.exists()) {
-      const data = userDoc.data() as UserState;
-      
-      const buddiesSnap = await getDocs(collection(db, 'users', uid, 'buddies'));
-      const buddies = buddiesSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Buddy[];
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        
+        const buddiesSnap = await getDocs(collection(db, 'users', uid, 'buddies'));
+        const buddies = buddiesSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Buddy[];
 
-      const baseData = { ...data, buddies: buddies || [] };
-      
-      const today = new Date();
-      const lastActive = baseData.lastActiveDate ? new Date(baseData.lastActiveDate) : new Date();
-      const todayStr = today.toDateString();
-      const lastActiveStr = lastActive.toDateString();
-
-      if (todayStr !== lastActiveStr) {
-        const yesterday = new Date();
-        yesterday.setDate(today.getDate() - 1);
-        const yesterdayStr = yesterday.toDateString();
-
-        let updatedStreak = baseData.streak || 1;
-        if (lastActiveStr === yesterdayStr) {
-          updatedStreak += 1;
-        } else if (lastActiveStr !== todayStr) {
-          updatedStreak = 1;
-        }
-
-        const updatePayload = {
-          dailyPoints: 0,
-          dailyStudyPoints: 0,
-          streak: updatedStreak,
-          lastActiveDate: today.toISOString()
+        // Defensively ensure all array properties are initialized
+        const baseData: UserState = {
+          uid: data.uid || uid,
+          name: data.name || 'User',
+          username: data.username || '',
+          email: data.email || '',
+          totalPoints: data.totalPoints || 0,
+          dailyPoints: data.dailyPoints || 0,
+          streak: data.streak || 0,
+          dailyGoal: data.dailyGoal || 250,
+          lastActiveDate: data.lastActiveDate || new Date().toISOString(),
+          lastCheckInDates: data.lastCheckInDates || {},
+          schedule: Array.isArray(data.schedule) ? data.schedule : [],
+          totalSessions: data.totalSessions || 0,
+          syncHistory: Array.isArray(data.syncHistory) ? data.syncHistory : [],
+          redemptionHistory: Array.isArray(data.redemptionHistory) ? data.redemptionHistory : [],
+          studyLog: Array.isArray(data.studyLog) ? data.studyLog : [],
+          dailyStudyPoints: data.dailyStudyPoints || 0,
+          buddies: buddies || []
         };
-        await updateDoc(doc(db, 'users', uid), updatePayload);
-        return { ...baseData, ...updatePayload };
+        
+        const today = new Date();
+        const lastActive = baseData.lastActiveDate ? new Date(baseData.lastActiveDate) : new Date();
+        const todayStr = today.toDateString();
+        const lastActiveStr = lastActive.toDateString();
+
+        if (todayStr !== lastActiveStr) {
+          const yesterday = new Date();
+          yesterday.setDate(today.getDate() - 1);
+          const yesterdayStr = yesterday.toDateString();
+
+          let updatedStreak = baseData.streak || 1;
+          if (lastActiveStr === yesterdayStr) {
+            updatedStreak += 1;
+          } else if (lastActiveStr !== todayStr) {
+            updatedStreak = 1;
+          }
+
+          const updatePayload = {
+            dailyPoints: 0,
+            dailyStudyPoints: 0,
+            streak: updatedStreak,
+            lastActiveDate: today.toISOString()
+          };
+          await updateDoc(doc(db, 'users', uid), updatePayload);
+          return { ...baseData, ...updatePayload };
+        }
+        return baseData;
       }
-      return baseData;
+    } catch (err) {
+      console.error("Error fetching user data:", err);
     }
     return null;
   };
@@ -85,21 +109,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const signup = async (email: string, password: string, name: string, username: string) => {
-    await runTransaction(db, async (transaction) => {
-      const usernameDocRef = doc(db, 'usernames', username.toLowerCase());
-      const usernameDoc = await transaction.get(usernameDocRef);
+    const usernameLower = username.toLowerCase();
+    
+    // 1. Pre-check username availability (Fast fail)
+    const usernameDoc = await getDoc(doc(db, 'usernames', usernameLower));
+    if (usernameDoc.exists()) {
+      throw { code: 'auth/username-already-in-use' };
+    }
+
+    // 2. Perform Auth (Outside transaction to avoid "Unexpected state" error)
+    const res = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = res.user.uid;
+
+    try {
+      // 3. Setup Firestore Profile
+      const batch = writeBatch(db);
       
-      if (usernameDoc.exists()) {
-        throw { code: 'auth/username-already-in-use' };
-      }
-
-      const res = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = res.user.uid;
-
       const newUser: UserState = {
         uid,
         name,
-        username: username.toLowerCase(),
+        username: usernameLower,
         email,
         totalPoints: 0,
         dailyPoints: 0,
@@ -116,12 +145,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         buddies: []
       };
 
-      transaction.set(doc(db, 'users', uid), newUser);
-      transaction.set(usernameDocRef, { uid });
+      batch.set(doc(db, 'users', uid), newUser);
+      batch.set(doc(db, 'usernames', usernameLower), { uid });
       
+      await batch.commit();
       await updateProfile(res.user, { displayName: name });
-      setUser(newUser);
-    });
+      
+      // User state will be set by the onAuthStateChanged listener
+    } catch (err) {
+      // If profile creation fails, we attempt to clean up the Auth user to allow retry
+      try {
+        await deleteUser(res.user);
+      } catch (cleanupErr) {
+        console.error("Failed to clean up user after profile creation error", cleanupErr);
+      }
+      throw err;
+    }
   };
 
   const login = async (email: string, password: string) => {
@@ -214,21 +253,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addClass = async (newClass: ClassSchedule) => {
     if (!user) return;
-    const updatedSchedule = [...user.schedule, newClass];
+    const updatedSchedule = [...(Array.isArray(user.schedule) ? user.schedule : []), newClass];
     await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
     setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
   };
 
   const removeClass = async (className: string) => {
     if (!user) return;
-    const updatedSchedule = user.schedule.filter(c => c.className !== className);
+    const updatedSchedule = (Array.isArray(user.schedule) ? user.schedule : []).filter(c => c.className !== className);
     await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
     setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
   };
 
   const editClass = async (oldClassName: string, updatedClass: ClassSchedule) => {
     if (!user) return;
-    const updatedSchedule = user.schedule.map(c => c.className === oldClassName ? updatedClass : c);
+    const updatedSchedule = (Array.isArray(user.schedule) ? user.schedule : []).map(c => c.className === oldClassName ? updatedClass : c);
     await updateDoc(doc(db, 'users', user.uid), { schedule: updatedSchedule });
     setUser(prev => prev ? ({ ...prev, schedule: updatedSchedule }) : null);
   };
@@ -244,7 +283,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const uid = user.uid;
     const username = user.username;
     await deleteDoc(doc(db, 'users', uid));
-    await deleteDoc(doc(db, 'usernames', username));
+    if (username) {
+      await deleteDoc(doc(db, 'usernames', username.toLowerCase()));
+    }
     await auth.currentUser?.delete();
     setUser(null);
   };
@@ -255,15 +296,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const buddyDoc = await getDoc(doc(db, 'users', targetUid));
     if (!buddyDoc.exists()) return;
 
-    const buddyData = buddyDoc.data() as UserState;
-    const sharedClasses = user.schedule
-      .filter(c => buddyData.schedule.some(bc => bc.className === c.className))
+    const buddyData = buddyDoc.data();
+    const buddySchedule = Array.isArray(buddyData.schedule) ? buddyData.schedule : [];
+    const mySchedule = Array.isArray(user.schedule) ? user.schedule : [];
+
+    const sharedClasses = mySchedule
+      .filter(c => buddySchedule.some((bc: any) => bc.className === c.className))
       .map(c => c.className);
 
     const buddyEntry: Buddy = {
       id: targetUid,
-      name: buddyData.name,
-      username: buddyData.username,
+      name: buddyData.name || 'User',
+      username: buddyData.username || '',
       sharedClasses: sharedClasses
     };
 
@@ -279,8 +323,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = {
       totalPoints: user.totalPoints + 50,
       dailyPoints: user.dailyPoints + 50,
-      syncHistory: [newHistory, ...user.syncHistory].slice(0, 5),
-      buddies: [buddyEntry, ...user.buddies]
+      syncHistory: [newHistory, ...(Array.isArray(user.syncHistory) ? user.syncHistory : [])].slice(0, 5),
+      buddies: [buddyEntry, ...(Array.isArray(user.buddies) ? user.buddies : [])]
     };
     await updateDoc(doc(db, 'users', user.uid), updated);
     setUser(prev => prev ? ({ ...prev, ...updated }) : null);
@@ -296,7 +340,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     const updated = {
       totalPoints: user.totalPoints - cost,
-      redemptionHistory: [newRedemption, ...user.redemptionHistory]
+      redemptionHistory: [newRedemption, ...(Array.isArray(user.redemptionHistory) ? user.redemptionHistory : [])]
     };
     await updateDoc(doc(db, 'users', user.uid), updated);
     setUser(prev => prev ? ({ ...prev, ...updated }) : null);
@@ -305,9 +349,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const getInitials = () => {
     if (!user || !user.name) return "??";
-    const parts = user.name.split(' ');
-    if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-    return user.name.substring(0, 2).toUpperCase();
+    const parts = user.name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return user.name.trim().substring(0, 2).toUpperCase();
   };
 
   return (

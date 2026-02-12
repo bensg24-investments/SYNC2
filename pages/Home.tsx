@@ -13,7 +13,10 @@ const HomePage: React.FC = () => {
   if (!user) return null;
 
   const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()] as DayOfWeek;
-  const classesToday = user.schedule.filter(c => c.days.includes(todayName));
+  
+  // Defensive check to ensure schedule is an array
+  const schedule = Array.isArray(user.schedule) ? user.schedule : [];
+  const classesToday = schedule.filter(c => c.days.includes(todayName));
   const nextClass = classesToday[0];
 
   const progress = (user.dailyPoints / user.dailyGoal) * 100;
