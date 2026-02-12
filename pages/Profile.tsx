@@ -15,7 +15,7 @@ const ProfilePage: React.FC = () => {
   const stats = [
     { label: 'CLASSES', value: user.schedule.length, sublabel: 'SCHEDULED', icon: <Calendar size={24} />, iconColor: 'bg-[#3b82f6]', onClick: () => navigate('/classes') },
     { label: 'STUDY', value: user.totalSessions, sublabel: 'SESSIONS', icon: <BookOpen size={24} />, iconColor: 'bg-[#ff6b6b]', onClick: () => navigate('/study') },
-    { label: 'FRIENDS', value: user.buddies?.length || 0, sublabel: 'CONNECTED', icon: <Users size={24} />, iconColor: 'bg-[#f59e0b]', onClick: () => navigate('/scan') },
+    { label: 'BUDDIES', value: user.buddies?.length || 0, sublabel: 'CONNECTED', icon: <Users size={24} />, iconColor: 'bg-[#f59e0b]', onClick: () => navigate('/scan') },
     { label: 'TODAY', value: user.dailyPoints, sublabel: 'POINTS', icon: <TrendingUp size={24} />, iconColor: 'bg-[#4ea398]', onClick: () => setShowGoalModal(true) },
   ];
 
