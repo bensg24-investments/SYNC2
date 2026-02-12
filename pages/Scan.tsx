@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../AppContext';
-import { ScanText, RefreshCw, UserPlus, CheckCircle2, AlertCircle, X, AtSign, Users, CheckSquare, Square } from 'lucide-react';
+import { ScanText, RefreshCw, UserPlus, CheckCircle2, AlertCircle, X, AtSign, Users, CheckSquare, Square, Edit2, Trash2 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { Html5Qrcode } from 'html5-qrcode';
 
 const ScanPage: React.FC = () => {
-  const { user, performGroupSync, findBuddy, getInitials } = useApp();
+  const { user, performGroupSync, findBuddy, getInitials, updateBuddySharedClasses, removeBuddy } = useApp();
   const [mode, setMode] = useState<'my-id' | 'scan-id'>('my-id');
   const [syncing, setSyncing] = useState(false);
   const [manualId, setManualId] = useState('');
@@ -18,17 +18,20 @@ const ScanPage: React.FC = () => {
   const [potentialBuddy, setPotentialBuddy] = useState<any>(null);
   const [selectedSharedClasses, setSelectedSharedClasses] = useState<string[]>([]);
 
+  // Edit buddy state
+  const [editingBuddy, setEditingBuddy] = useState<any>(null);
+
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerBusy = useRef(false);
 
   useEffect(() => {
-    if (mode === 'scan-id' && !showManual && !potentialBuddy) {
+    if (mode === 'scan-id' && !showManual && !potentialBuddy && !editingBuddy) {
       startScanner();
     } else {
       stopScanner();
     }
     return () => { if (scannerRef.current?.isScanning) stopScanner(); };
-  }, [mode, showManual, potentialBuddy]);
+  }, [mode, showManual, potentialBuddy, editingBuddy]);
 
   const startScanner = async () => {
     if (scannerBusy.current || scannerRef.current?.isScanning) return;
@@ -107,6 +110,52 @@ const ScanPage: React.FC = () => {
     }
   };
 
+  const handleEditBuddy = async (buddy: any) => {
+    setSyncing(true);
+    try {
+      const fullProfile = await findBuddy(buddy.id);
+      if (fullProfile) {
+        setEditingBuddy({ ...fullProfile, sharedClasses: buddy.sharedClasses });
+        setSelectedSharedClasses(buddy.sharedClasses);
+      }
+    } catch (err) {
+      setErrorMessage("Failed to load buddy profile.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editingBuddy) return;
+    setSyncing(true);
+    try {
+      await updateBuddySharedClasses(editingBuddy.uid, selectedSharedClasses);
+      setSuccessMessage("Buddy updated!");
+      setEditingBuddy(null);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setErrorMessage("Failed to update buddy.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDeleteBuddy = async () => {
+    if (!editingBuddy) return;
+    if (!confirm(`Are you sure you want to remove ${editingBuddy.name}?`)) return;
+    setSyncing(true);
+    try {
+      await removeBuddy(editingBuddy.uid);
+      setSuccessMessage("Buddy removed.");
+      setEditingBuddy(null);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setErrorMessage("Failed to remove buddy.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const toggleClass = (className: string) => {
     setSelectedSharedClasses(prev => prev.includes(className) ? prev.filter(c => c !== className) : [...prev, className]);
   };
@@ -150,7 +199,7 @@ const ScanPage: React.FC = () => {
             </div>
             <div className="space-y-4">
               {user.buddies.length > 0 ? user.buddies.map(buddy => (
-                <div key={buddy.id} className="bg-white border border-slate-50 p-5 rounded-[32px] shadow-sm flex items-center justify-between">
+                <div key={buddy.id} className="bg-white border border-slate-50 p-5 rounded-[32px] shadow-sm flex items-center justify-between group">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center text-[#1a4a5e] font-black text-sm">{getInitials(buddy.name)}</div>
                     <div>
@@ -158,6 +207,7 @@ const ScanPage: React.FC = () => {
                       <div className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">@{buddy.username} • {buddy.sharedClasses.length} SHARED</div>
                     </div>
                   </div>
+                  <button onClick={() => handleEditBuddy(buddy)} className="p-3 text-slate-300 hover:text-[#e67e5f] transition-colors"><Edit2 size={20} /></button>
                 </div>
               )) : (
                 <div className="bg-slate-100/50 border border-dashed border-slate-200 p-8 rounded-[32px] text-center">
@@ -211,19 +261,19 @@ const ScanPage: React.FC = () => {
         </div>
       )}
 
-      {/* Buddy Review Modal */}
-      {potentialBuddy && (
+      {/* Buddy Review/Edit Modal */}
+      {(potentialBuddy || editingBuddy) && (
         <div className="fixed inset-0 bg-[#1a4a5e]/40 backdrop-blur-md z-[300] flex items-end justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-[48px] p-10 shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[90vh] overflow-y-auto no-scrollbar">
              <div className="flex justify-between items-start mb-6">
                <div className="flex items-center gap-4">
-                 <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-[#1a4a5e] font-black text-xl">{getInitials(potentialBuddy.name)}</div>
+                 <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-[#1a4a5e] font-black text-xl">{getInitials(potentialBuddy?.name || editingBuddy?.name)}</div>
                  <div>
-                   <h2 className="text-2xl font-black text-[#1a4a5e]">{potentialBuddy.name}</h2>
-                   <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">@{potentialBuddy.username}</p>
+                   <h2 className="text-2xl font-black text-[#1a4a5e]">{potentialBuddy?.name || editingBuddy?.name}</h2>
+                   <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">@{potentialBuddy?.username || editingBuddy?.username}</p>
                  </div>
                </div>
-               <button onClick={() => setPotentialBuddy(null)} className="text-slate-300 p-2"><X size={28} /></button>
+               <button onClick={() => { setPotentialBuddy(null); setEditingBuddy(null); }} className="text-slate-300 p-2"><X size={28} /></button>
              </div>
 
              <div className="mb-8">
@@ -231,10 +281,10 @@ const ScanPage: React.FC = () => {
                <p className="text-xs font-bold text-slate-400 leading-relaxed mb-6">Select which classes you have together to earn collaboration bonuses.</p>
                
                <div className="space-y-3">
-                 {potentialBuddy.schedule && potentialBuddy.schedule.length > 0 ? potentialBuddy.schedule.map((cls: any) => {
+                 {(potentialBuddy?.schedule || editingBuddy?.schedule || []).map((cls: any) => {
                    const isSelected = selectedSharedClasses.includes(cls.className);
                    return (
-                     <button key={cls.className} onClick={() => toggleClass(cls.className)} className={`w-full flex items-center justify-between p-5 rounded-3xl border transition-all ${isSelected ? 'bg-[#1a4a5e] border-[#1a4a5e] text-white' : 'bg-slate-50 border-transparent text-[#1a4a5e]'}`}>
+                     <button key={cls.className} onClick={() => toggleClass(cls.className)} className={`w-full flex items-center justify-between p-5 rounded-3xl border transition-all ${isSelected ? 'bg-[#1a4a5e] border-[#1a4a5e] text-white shadow-lg' : 'bg-slate-50 border-transparent text-[#1a4a5e]'}`}>
                        <div className="text-left">
                          <div className="font-black text-sm">{cls.className}</div>
                          <div className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${isSelected ? 'opacity-60' : 'text-slate-400'}`}>{cls.startTime} - {cls.endTime}</div>
@@ -242,7 +292,8 @@ const ScanPage: React.FC = () => {
                        {isSelected ? <CheckSquare size={20} /> : <Square size={20} className="opacity-20" />}
                      </button>
                    );
-                 }) : (
+                 })}
+                 {!(potentialBuddy?.schedule?.length || editingBuddy?.schedule?.length) && (
                    <div className="p-10 border-2 border-dashed border-slate-100 rounded-3xl text-center">
                      <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Buddy has no classes listed</p>
                    </div>
@@ -250,10 +301,19 @@ const ScanPage: React.FC = () => {
                </div>
              </div>
 
-             <button onClick={finalizeSync} disabled={syncing} className="w-full bg-gradient-to-r from-[#1a4a5e] to-[#e67e5f] text-white font-black py-6 rounded-[28px] flex items-center justify-center gap-3 shadow-xl transition-all">
-                {syncing ? <RefreshCw className="animate-spin" size={22} /> : <CheckCircle2 size={22} />}
-                <span className="text-lg">Finalize Sync</span>
-             </button>
+             <div className="space-y-4">
+               <button onClick={potentialBuddy ? finalizeSync : saveEdit} disabled={syncing} className="w-full bg-gradient-to-r from-[#1a4a5e] to-[#e67e5f] text-white font-black py-6 rounded-[28px] flex items-center justify-center gap-3 shadow-xl transition-all">
+                  {syncing ? <RefreshCw className="animate-spin" size={22} /> : <CheckCircle2 size={22} />}
+                  <span className="text-lg">{potentialBuddy ? 'Finalize Sync' : 'Save Changes'}</span>
+               </button>
+               
+               {editingBuddy && (
+                 <button onClick={handleDeleteBuddy} disabled={syncing} className="w-full bg-red-50 text-red-500 font-black py-4 rounded-[24px] flex items-center justify-center gap-2 transition-all hover:bg-red-100">
+                    <Trash2 size={18} />
+                    <span className="text-xs uppercase tracking-widest">Delete Buddy</span>
+                 </button>
+               )}
+             </div>
           </div>
         </div>
       )}

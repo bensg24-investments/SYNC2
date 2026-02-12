@@ -232,11 +232,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(prev => prev ? ({ ...prev, ...updated }) : null);
   };
 
+  const updateBuddySharedClasses = async (buddyId: string, sharedClasses: string[]) => {
+    if (!user) return;
+    await updateDoc(doc(db, 'users', user.uid, 'buddies', buddyId), { sharedClasses });
+    setUser(prev => {
+      if (!prev) return null;
+      const updatedBuddies = prev.buddies.map(b => b.id === buddyId ? { ...b, sharedClasses } : b);
+      return { ...prev, buddies: updatedBuddies };
+    });
+  };
+
+  const removeBuddy = async (buddyId: string) => {
+    if (!user) return;
+    await deleteDoc(doc(db, 'users', user.uid, 'buddies', buddyId));
+    setUser(prev => {
+      if (!prev) return null;
+      const updatedBuddies = prev.buddies.filter(b => b.id !== buddyId);
+      return { ...prev, buddies: updatedBuddies };
+    });
+  };
+
   const findBuddy = async (identifier: string) => {
-    // Try UID first
     let userDoc = await getDoc(doc(db, 'users', identifier));
     if (!userDoc.exists()) {
-      // Try Username
       const usernameDoc = await getDoc(doc(db, 'usernames', identifier.toLowerCase()));
       if (usernameDoc.exists()) {
         const uid = usernameDoc.data().uid;
@@ -313,7 +331,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{ 
       user, loading, checkIn, updateDailyGoal, addClass, removeClass, editClass, 
       getInitials, updateSettings, deleteAccount, performGroupSync, logStudySession,
-      redeemReward, signup, login, loginWithGoogle, logout, findBuddy
+      redeemReward, signup, login, loginWithGoogle, logout, findBuddy, updateBuddySharedClasses, removeBuddy
     }}>
       {children}
     </AppContext.Provider>
