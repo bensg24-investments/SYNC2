@@ -13,19 +13,20 @@ import AuthPage from './pages/Auth';
 import { useApp } from './AppContext';
 
 const Logo: React.FC<{ size?: number; animated?: boolean; withBackground?: boolean }> = ({ size = 80, animated = false, withBackground = false }) => (
-  <div className={`relative flex items-center justify-center ${withBackground ? 'rounded-[32px] overflow-hidden p-2 bg-gradient-to-br from-[#3a5866] via-[#5b7a8a] to-[#e67e5f] shadow-2xl' : ''}`} style={{ width: size, height: size }}>
-    <svg width="85%" height="85%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={animated ? 'animate-pulse' : ''}>
-      {/* Sync Arrows */}
-      <path d="M25 45 A 25 25 0 0 1 75 45" stroke="white" strokeWidth="5" strokeLinecap="round" fill="none" />
-      <path d="M75 55 A 25 25 0 0 1 25 55" stroke="white" strokeWidth="5" strokeLinecap="round" fill="none" />
+  <div className={`relative flex items-center justify-center ${withBackground ? 'rounded-[32px] overflow-hidden p-2 bg-gradient-to-br from-[#2c4a5e] via-[#4d6a7e] to-[#e67e5f] shadow-2xl' : ''}`} style={{ width: size, height: size }}>
+    <svg width="85%" height="85%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${animated ? 'animate-pulse' : ''} drop-shadow-sm`}>
+      {/* Sync Arrows - Sharpened */}
+      <path d="M25 45 A 25 25 0 0 1 75 45" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
+      <path d="M75 55 A 25 25 0 0 1 25 55" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
+      
       {/* Arrow Heads */}
-      <path d="M72 40 L 75 45 L 70 47" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <path d="M28 60 L 25 55 L 30 53" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M71 39 L 75 45 L 69 47" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M29 61 L 25 55 L 31 53" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       
       {/* Sink/Tap Icon */}
-      <path d="M35 55 H 70" stroke="white" strokeWidth="6" strokeLinecap="round" />
-      <path d="M42 55 V 48 H 47" stroke="white" strokeWidth="6" strokeLinecap="round" />
-      <path d="M55 55 V 42 C 55 36 65 36 65 42 V 48" stroke="white" strokeWidth="6" strokeLinecap="round" fill="none" />
+      <path d="M35 55 H 70" stroke="white" strokeWidth="7" strokeLinecap="round" />
+      <path d="M42 55 V 48 H 47" stroke="white" strokeWidth="7" strokeLinecap="round" />
+      <path d="M55 55 V 42 C 55 35 65 35 65 42 V 48" stroke="white" strokeWidth="7" strokeLinecap="round" fill="none" />
     </svg>
   </div>
 );
@@ -102,7 +103,6 @@ const App: React.FC = () => {
           <Route path="/scan" element={<ScanPage />} />
           <Route path="/redeem" element={<RedeemPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          {/* Ensure all unauthorized or unknown routes land on home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>

@@ -122,14 +122,17 @@ const RedeemPage: React.FC = () => {
         <p className="text-sm font-bold text-slate-400 mt-1">Trade points for real rewards</p>
       </div>
 
-      {/* Available Points Card */}
-      <div className={`bg-white rounded-[48px] p-12 mb-10 shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)] border border-white flex flex-col items-center transition-all duration-300 ${animatingPoints ? 'scale-105 border-green-100' : ''}`}>
-        <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-3">Available Points</div>
-        <div className="flex items-center gap-3">
-           <Zap className={`text-[#e67e5f] fill-[#e67e5f] transition-transform ${animatingPoints ? 'scale-125' : ''}`} size={32} />
-           <div className={`text-[96px] font-black text-[#1a4a5e] leading-none tracking-tighter transition-all ${animatingPoints ? 'text-green-600' : ''}`}>
-            {user.totalPoints}
-           </div>
+      {/* Available Points Card - Updated with Gradient Theme */}
+      <div className={`bg-gradient-to-br from-[#4ea398] via-[#85b1a3] to-[#e67e5f] rounded-[48px] p-12 mb-10 shadow-xl shadow-slate-200/50 flex flex-col items-center transition-all duration-300 relative overflow-hidden ${animatingPoints ? 'scale-105' : ''}`}>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] mb-3">Available Points</div>
+          <div className="flex items-center gap-3">
+             <Zap className={`text-white fill-white transition-transform ${animatingPoints ? 'scale-125' : ''}`} size={32} />
+             <div className={`text-[96px] font-black text-white leading-none tracking-tighter transition-all ${animatingPoints ? 'text-green-100' : ''}`}>
+              {user.totalPoints}
+             </div>
+          </div>
         </div>
       </div>
 

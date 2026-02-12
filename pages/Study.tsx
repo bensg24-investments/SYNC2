@@ -59,13 +59,13 @@ const StudyPage: React.FC = () => {
         <p className="text-base font-bold text-slate-400 mt-1">Log your study time and earn</p>
       </div>
 
-      <div className="relative bg-gradient-to-br from-[#8155ff] to-[#6d38e0] rounded-[40px] p-10 mb-10 overflow-hidden shadow-[0_20px_40px_rgba(109,56,224,0.2)]">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+      <div className="relative bg-gradient-to-br from-[#4ea398] via-[#85b1a3] to-[#e67e5f] rounded-[48px] p-12 mb-10 overflow-hidden shadow-xl shadow-slate-200/50">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
         <div className="relative z-10">
-          <div className="text-[11px] font-black text-white/70 uppercase tracking-[0.2em] mb-3">Today's Study Points</div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-[72px] font-black text-white leading-none tracking-tighter">{user.dailyStudyPoints || 0}</span>
-            <span className="text-xl font-bold text-white/80 leading-none">pts earned</span>
+          <div className="text-[12px] font-black text-white/70 uppercase tracking-[0.25em] mb-4">Today's Study Points</div>
+          <div className="flex items-end gap-3">
+            <span className="text-[96px] font-black text-white leading-[0.8] tracking-tight">{user.dailyStudyPoints || 0}</span>
+            <span className="text-xl font-bold text-white mb-2">pts earned</span>
           </div>
         </div>
       </div>
@@ -77,10 +77,10 @@ const StudyPage: React.FC = () => {
             <button
               key={dur.label}
               onClick={() => setSelectedDuration(dur.value)}
-              className={`py-6 rounded-[20px] font-black text-[13px] transition-all ${
+              className={`py-6 rounded-[24px] font-black text-[13px] transition-all ${
                 (selectedDuration === dur.value && dur.value !== 0) || (selectedDuration === 0 && dur.value === 0)
-                  ? 'bg-[#ff6b6b] text-white shadow-[0_10px_20px_rgba(255,107,107,0.3)] scale-[1.05]'
-                  : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                  ? 'bg-[#1a4a5e] text-white shadow-xl shadow-[#1a4a5e]/20 scale-[1.05]'
+                  : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-50'
               }`}
             >
               {dur.label}
@@ -89,7 +89,7 @@ const StudyPage: React.FC = () => {
         </div>
       </div>
 
-      <button onClick={handleLogClick} className="w-full bg-[#1e293b] text-white font-black py-6 rounded-[32px] flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] transition-all mb-10">
+      <button onClick={handleLogClick} className="w-full bg-[#1a4a5e] text-white font-black py-6 rounded-[32px] flex items-center justify-center gap-3 shadow-xl shadow-[#1a4a5e]/15 active:scale-[0.98] transition-all mb-10">
         <Clock size={22} strokeWidth={2.5} /><span className="text-sm tracking-widest uppercase">Log Session</span>
       </button>
 
@@ -122,8 +122,8 @@ const StudyPage: React.FC = () => {
       </div>
 
       {showCompleteModal && (
-        <div className="fixed inset-0 bg-[#1a4a5e]/40 backdrop-blur-md z-[200] flex items-end justify-center">
-          <div className="bg-white w-full max-w-md rounded-t-[48px] p-10 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 bg-[#1a4a5e]/40 backdrop-blur-md z-[200] flex items-end justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-[48px] p-10 shadow-2xl animate-in slide-in-from-bottom duration-300">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h2 className="text-3xl font-black text-[#1a4a5e]">Session Complete?</h2>
@@ -137,9 +137,9 @@ const StudyPage: React.FC = () => {
                 <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#1a4a5e]/10 group-hover:text-[#1a4a5e] transition-all"><User size={28} /></div>
                 <div className="text-left"><div className="text-xl font-black text-[#1a4a5e]">Studied Alone</div><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Commit Base Points</div></div>
               </button>
-              <button onClick={handleStudyWithBuddies} className="w-full flex items-center gap-6 p-6 rounded-[32px] border-2 border-red-50 bg-red-50/20 hover:border-[#ff6b6b] group">
-                <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center text-[#ff6b6b] group-hover:scale-110 transition-all"><Users size={28} /></div>
-                <div className="text-left"><div className="text-xl font-black text-[#1a4a5e]">With Buddies</div><div className="text-[10px] font-black text-[#ff6b6b] uppercase tracking-widest mt-1">Earn Collaboration Bonuses</div></div>
+              <button onClick={handleStudyWithBuddies} className="w-full flex items-center gap-6 p-6 rounded-[32px] border-2 border-red-50 bg-red-50/20 hover:border-[#e67e5f] group">
+                <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center text-[#e67e5f] group-hover:scale-110 transition-all"><Users size={28} /></div>
+                <div className="text-left"><div className="text-xl font-black text-[#1a4a5e]">With Buddies</div><div className="text-[10px] font-black text-[#e67e5f] uppercase tracking-widest mt-1">Earn Collaboration Bonuses</div></div>
               </button>
             </div>
           </div>
@@ -160,15 +160,15 @@ const StudyPage: React.FC = () => {
                 const isClassmate = buddy.sharedClasses.length > 0;
                 const buddyInitials = buddy.name ? buddy.name.split(' ').map(n => n[0]).join('').toUpperCase() : '??';
                 return (
-                  <button key={buddy.id} onClick={() => toggleBuddy(buddy.id)} className={`w-full flex items-center justify-between p-5 rounded-[24px] border transition-all ${isSelected ? 'bg-white border-[#3b82f6] shadow-lg shadow-blue-500/10' : 'bg-white border-slate-100'}`}>
+                  <button key={buddy.id} onClick={() => toggleBuddy(buddy.id)} className={`w-full flex items-center justify-between p-5 rounded-[24px] border transition-all ${isSelected ? 'bg-white border-[#e67e5f] shadow-lg shadow-[#e67e5f]/10' : 'bg-white border-slate-100'}`}>
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center font-black text-slate-400 text-xs bg-slate-100">{buddyInitials}</div>
                       <div className="text-left">
                         <div className="font-black text-[#1a4a5e] text-lg leading-none mb-1">{buddy.name}</div>
-                        <div className={`text-[10px] font-black uppercase tracking-widest ${isClassmate ? 'text-blue-500' : 'text-slate-400'}`}>{isClassmate ? 'Classmate (+20)' : 'Sync Buddy (+10)'}</div>
+                        <div className={`text-[10px] font-black uppercase tracking-widest ${isClassmate ? 'text-[#e67e5f]' : 'text-slate-400'}`}>{isClassmate ? 'Classmate (+20)' : 'Sync Buddy (+10)'}</div>
                       </div>
                     </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-[#3b82f6] border-[#3b82f6]' : 'border-slate-100'}`}>{isSelected && <CheckCircle2 className="text-white" size={14} />}</div>
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-[#e67e5f] border-[#e67e5f]' : 'border-slate-100'}`}>{isSelected && <CheckCircle2 className="text-white" size={14} />}</div>
                   </button>
                 );
               })}
